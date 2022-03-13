@@ -14,11 +14,12 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include "libpalindrome.h"
 
 int main(int argc, char** argv) {
 
     /* Deskryptory dla gniazda nasluchujacego i polaczonego: */
-    int             listenfd, connfd;
+    int             listenfd;
 
     int             retval; /* Wartosc zwracana przez funkcje. */
 
@@ -34,17 +35,14 @@ int main(int argc, char** argv) {
     /* Bufor dla adresu IP klienta w postaci kropkowo-dziesietnej: */
     char            addr_buff[256];
 
-    time_t          rawtime;
-    struct tm*      timeinfo;
-
 
     if (argc != 2) {
         fprintf(stderr, "Invocation: %s <PORT>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    /* Utworzenie gniazda dla protokolu TCP: */
-    listenfd = socket(PF_INET, SOCK_STREAM, 0);
+    /* Utworzenie gniazda dla protokolu UDP: */
+    listenfd = socket(PF_INET, SOCK_DGRAM, 0);
     if (listenfd == -1) {
         perror("socket()");
         exit(EXIT_FAILURE);
@@ -68,54 +66,46 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    /* Przeksztalcenie gniazda w gniazdo nasluchujace: */
-    if (listen(listenfd, 2) == -1) {
-        perror("listen()");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(stdout, "Server is listening for incoming connection on port %hu...\n",server_addr.sin_port);
-
-    /* Funkcja pobiera polaczenie z kolejki polaczen oczekujacych na zaakceptowanie
-     * i zwraca deskryptor dla gniazda polaczonego: */
-    client_addr_len = sizeof(client_addr);
-    connfd = accept(listenfd, (struct sockaddr*)&client_addr, &client_addr_len);
-    if (connfd == -1) {
-        perror("accept()");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(
-        stdout, "TCP connection accepted from %s:%d\n",
-        inet_ntop(AF_INET, &client_addr.sin_addr, addr_buff, sizeof(addr_buff)),
-        ntohs(client_addr.sin_port)
-    );
-
-    sleep(6);
-
-    fprintf(stdout, "Sending current date and time...\n");
+    fprintf(stdout, "Server is listening for incoming connection...\n");
 
     sleep(2);
-    /* Zapisanie w buforze aktualnego czasu: */
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
-    strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S %Z", timeinfo);
 
-    /* Wyslanie aktualnego czasu do klienta: */
-    retval = write(connfd, buff, strlen(buff));
+    while(1){
+        /* Funkcja oczekuje na datagram (od klienta): */
+        fprintf(stdout, "Waiting for data...\n");
+        retval = recvfrom(listenfd, buff, sizeof(buff),0,(struct sockaddr*)&client_addr, &client_addr_len);
+        if (retval == -1) {
+            perror("recvfrom()");
+            exit(EXIT_FAILURE);
+        }
+        sleep(2);
 
-    /* Funkcja oczekuje na segment TCP (od klienta) z ustawiona flaga FIN: */
-    retval = read(connfd, buff, sizeof(buff));
-    if (retval == 0) {
-        sleep(4);
-        fprintf(stdout, "Connection terminated by client "
-                "(received FIN, entering CLOSE_WAIT state on connected socked)...\n");
+        if(buff[0]=='\n') break;
+
+        fprintf(stdout, "UDP datagram received from %s:%d. Echoing message...\n",
+            inet_ntop(AF_INET, &client_addr.sin_addr, addr_buff, sizeof(addr_buff)),
+            ntohs(client_addr.sin_port)
+        );
+        
+        /* Sprawdzenie czy treść requesta jest palindromem */
+        if(is_palindrome(buff,strlen(buff)) == 1)
+            sprintf(buff,"Jest palindromem liczbowym\n");
+        else    
+            sprintf(buff,"Nie jest palindromem\n");
+        
+
+        /* Wyslanie odpowiedzi do klienta: */
+        retval = sendto(
+                 listenfd,
+                 buff, retval,
+                 0,
+                 (struct sockaddr*)&client_addr, client_addr_len
+             );
+        if (retval == -1) {
+            perror("sendto()");
+            exit(EXIT_FAILURE);
+        }
     }
-
-    sleep(12);
-
-    fprintf(stdout, "Closing connected socket (sending FIN to client)...\n");
-    close(connfd);
 
     sleep(5);
 

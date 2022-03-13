@@ -52,7 +52,7 @@ int is_palindrome(char* buff, int buff_len) {
     for (i = 0; i < buff_len; ++i) {
         if (isdigit(buff[i])) {
             tmp[j++] = buff[i];
-            fprintf(stdout,"%c", buff[i]);
+            // fprintf(stdout,"%c", buff[i]);
             fflush(stdout);
         } else if (isalpha(buff[i])) {
             free(tmp);
