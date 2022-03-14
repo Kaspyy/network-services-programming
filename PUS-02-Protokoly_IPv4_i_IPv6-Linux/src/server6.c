@@ -1,12 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h> /* socket() */
-#include <netinet/in.h> /* INET_ADDRSTRLEN, INET6_ADDRSTRLEN */
-#include <errno.h>
+#include <netinet/in.h> /* struct sockaddr_in */
+#include <arpa/inet.h>  /* inet_ntop() */
+#include <unistd.h>     /* close() */
+#include <string.h>
 #include <time.h>
+#include <sys/time.h>
+#include <sys/ioctl.h>
+#include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <sys/select.h> // select, poll
+#include <sys/types.h>
+#include <netinet/in.h> // htons, htonl, ntohs, ntohl
+#include <arpa/inet.h>  // inet_pton, inet_ntop
 
 int main(int argc, char **argv)
 {
@@ -23,16 +31,13 @@ int main(int argc, char **argv)
     /* Bufor dla adresu IP klienta w postaci kropkowo-dziesietnej: */
     char addr_buff[256];
 
-    /* Bufor wykorzystywany przez write() i read() */
-    char buff[256];
-
     if (argc != 2)
     {
         fprintf(stderr, "Invocation: %s <PORT>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    /* Utworzenie gniazda dla protokolu UDP */
+    /* Utworzenie gniazda dla serwera */
     listenfd = socket(PF_INET6, SOCK_STREAM, 0);
     if (listenfd == -1)
     {
@@ -59,15 +64,16 @@ int main(int argc, char **argv)
     }
 
     /* Przeksztalcenie gniazda w gniazdo nasluchujace: */
-    if (listen(listenfd, 2) == -1)
+    if (listen(listenfd, 100) == -1)
     {
         perror("listen()");
         exit(EXIT_FAILURE);
     }
 
+    char *message = "Laboratorium PUS";
     while (1)
     {
-        fprintf(stdout, "Server is listening for incoming connection on port %hu ...\n", server.sin6_port);
+        fprintf(stdout, "Server is listening for incoming connection on port %hu ...\n", ntohs(server.sin6_port));
 
         /* Funkcja pobiera polaczenie z kolejki polaczen oczekujacych na zaakceptowanie i zwraca deskryptor dla gniazda polaczonego */
         client_len = sizeof(client);
@@ -81,15 +87,21 @@ int main(int argc, char **argv)
         fprintf(
             stdout, "TCP connection accepted from %s: %d\n",
             inet_ntop(AF_INET6, &client.sin6_addr, addr_buff, sizeof(addr_buff)),
-            ntohs(client.sin_port));
+            ntohs(client.sin6_port));
 
-        sleep(6);
-
+        /* Makrodefinicja IN6_IS_ADDR_V4MAPPED sprawdza czy
+        adres zwrocoony przez funkcje accept() jest adresem IPv6 czy IPv4-mapped IPv6 */
         if (IN6_IS_ADDR_V4MAPPED(&client.sin6_addr))
             fprintf(stdout, "Client address is IPv4\n");
         else
             fprintf(stdout, "Client address is IPv6\n");
 
-        retval = write(connfd, )
+        retval = send(connfd, message, strlen(message), 0);
+        if (retval == -1)
+        {
+            perror("send()");
+            exit(EXIT_FAILURE);
+        }
     }
+    exit(EXIT_SUCCESS);
 }
