@@ -18,7 +18,7 @@
 #define SOURCE_PORT 5050
 #define SOURCE_ADDRESS "192.0.2.1"
 
-/* Struktura pseudo-naglowka (do obliczania sumy kontrolnej naglowka UDP): */
+/* Struktura pseudo-naglowka (do obliczania sumy kontrolnej naglowka TCP): */
 struct phdr
 {
     struct in_addr ip_src, ip_dst;
@@ -53,10 +53,10 @@ int main(int argc, char **argv)
     struct ip *ip_header = (struct ip *)segment;
 
     /* Wskaznik na naglowek TCP (w buforze okreslonym przez 'segment'): */
-    struct tcphdr *tcp_header = (struct udphdr *)(segment + sizeof(struct ip));
+    struct tcphdr *tcp_header = (struct tcphdr *)(segment + sizeof(struct ip));
     /* Wskaznik na pseudo-naglowek (w buforze okreslonym przez 'segment'): */
     struct phdr *pseudo_header = (struct phdr *)(segment + sizeof(struct ip) + sizeof(struct tcphdr));
-    /* SPrawdzenie argumentow wywolania: */
+    /* Sprawdzenie argumentow wywolania: */
     if (argc != 3)
     {
         fprintf(
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_INET;       /* Domena komunikacyjna (IPv4). */
     hints.ai_socktype = SOCK_RAW;    /* Typ gniazda. */
-    hints.ai_protocol = IPPROTO_UDP; /* Protokol. */
+    hints.ai_protocol = IPPROTO_TCP; /* Protokol. */
 
     retval = getaddrinfo(argv[1], NULL, &hints, &result);
     if (retval != 0)
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
     ip_header->ip_ttl = 255; /* TTL */
 
     /* Identyfikator enkapsulowanego protokolu: */
-    ip_header->ip_p = IPPROTO_UDP;
+    ip_header->ip_p = IPPROTO_TCP;
 
     /* Adres zrodlowy ("Filled in when zero"): */
     ip_header->ip_src.s_addr = inet_addr(SOURCE_ADDRESS);
@@ -163,17 +163,17 @@ int main(int argc, char **argv)
     tcp_header->th_sport = htons(SOURCE_PORT);
     /* Port docelowy (z argumentu wywolania): */
     tcp_header->th_dport = htons(atoi(argv[2]));
-
+    /* Sygnal urzadzenia odbierajacego */
     tcp_header->th_ack = 0;
-
+    /* Numer sekwencji */
     tcp_header->th_seq = 0;
-
+    /* Rozmiar okna */
     tcp_header->th_win = 5000;
-
+    /* Wskaznik urgent */
     tcp_header->th_urp = 0;
-
+    /* Suma kontrolna */
     tcp_header->th_sum = 0;
-
+    /* Data offset */
     tcp_header->th_off = 5;
 
     /************************************/
@@ -188,10 +188,9 @@ int main(int argc, char **argv)
     pseudo_header->unused = 0;
     /* Identyfikator enkapsulowanego protokolu: */
     pseudo_header->protocol = ip_header->ip_p;
-    /* Rozmiar naglowka UDP i danych: */
+    /* Rozmiar naglowka TCP i danych: */
     pseudo_header->length = htons(sizeof(struct tcphdr));
-    /* Obliczenie sumy kontrolnej na podstawie naglowka UDP i pseudo-naglowka: */
-    // tcp_header->th_sum = 0;
+    /* Obliczenie sumy kontrolnej na podstawie naglowka TCP i pseudo-naglowka: */
     checksum = internet_checksum(
         (unsigned short *)tcp_header,
         sizeof(struct tcphdr) + sizeof(struct phdr));
@@ -206,7 +205,7 @@ int main(int argc, char **argv)
 
         /*
          * Prosze zauwazyc, ze pseudo-naglowek nie jest wysylany
-         * (ale jest umieszczony w buforze za naglowkiem UDP dla wygodnego
+         * (ale jest umieszczony w buforze za naglowkiem TCP dla wygodnego
          * obliczania sumy kontrolnej):
          */
         retval = sendto(
