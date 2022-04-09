@@ -58,6 +58,7 @@ int main(int argc, char** argv) {
     retval = ioctl(sockfd, SIOCSARP, &request);
     if (retval == -1) {
         perror("ioctl()");
+        close(sockfd);
         exit(EXIT_FAILURE);
     }
 
