@@ -33,8 +33,7 @@ int main(int argc, char **argv)
         perror("socket()");
         exit(EXIT_FAILURE);
     }
-
-    /* Ustalanie liczby strumieni wychodzących i przychodzących */
+    /* Ustawianie liczby strumieni przychodzących i wychodzących */
     memset(&initmsg, 0, sizeof(initmsg));
     initmsg.sinit_num_ostreams = 2;
     initmsg.sinit_max_instreams = 2;
@@ -56,14 +55,13 @@ int main(int argc, char **argv)
         perror("bind()");
         exit(EXIT_FAILURE);
     }
-
     if (listen(listenfd, 5) == -1)
     {
         perror("listen()");
         exit(EXIT_FAILURE);
     }
 
-    /* Odbieranie połączeń */
+    /* Pętla do obsługi połączeń */
     while (1)
     {
         connfd = accept(listenfd, NULL, 0);

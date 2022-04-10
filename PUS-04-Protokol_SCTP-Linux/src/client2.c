@@ -49,7 +49,7 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    /* Tworzenie gniazda */
+    /* Tworzenie gniazda typu one-to-one */
     sockfd = socket(result->ai_family, result->ai_socktype, IPPROTO_SCTP);
 
     if (sockfd == -1)
@@ -72,7 +72,6 @@ int main(int argc, char **argv)
         perror("setsockopt()");
         exit(EXIT_FAILURE);
     }
-
     if (connect(sockfd, result->ai_addr, result->ai_addrlen) == -1)
     {
         perror("connect()");
@@ -83,9 +82,11 @@ int main(int argc, char **argv)
 
     memset(&events, 0, sizeof(events));
     events.sctp_data_io_event = 1;
+    /* setsockopt() - ustawienie opcji dla gniazda */
     retval = setsockopt(sockfd, SOL_SCTP, SCTP_EVENTS, (const void *)&events, sizeof(events));
 
     slen = sizeof(status);
+    /* getsockopt() - pobranie opcji dla gniazda */
     retval = getsockopt(sockfd, SOL_SCTP, SCTP_STATUS, &status, (socklen_t *)&slen);
 
     /* Wypisanie informacji o asocjacji */
