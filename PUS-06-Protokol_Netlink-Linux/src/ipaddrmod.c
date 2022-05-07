@@ -111,7 +111,7 @@ int main(int argc, char **argv)
      */
 
     nh->nlmsg_type = action; /* RTM_NEWADDR lub RTM_DELADDR */
-    nh->nlmsg_flags = NLM_F_REQUEST;
+    nh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
     nh->nlmsg_seq = 1;
     nh->nlmsg_pid = getpid();
 
@@ -171,6 +171,16 @@ int main(int argc, char **argv)
     if (retval == -1)
     {
         perror("send()");
+        exit(EXIT_FAILURE);
+    }
+
+    retval = recvfrom(
+        sockfd, request, request_size, 0,
+        (struct sockaddr *)&sa, sizeof(struct sockaddr_nl));
+
+    if (retval == -1)
+    {
+        perror("recvfrom()");
         exit(EXIT_FAILURE);
     }
 

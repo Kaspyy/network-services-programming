@@ -16,16 +16,17 @@
  */
 
 int addattr_l(struct nlmsghdr *n, int maxlen, int type, const void *data,
-              int alen) {
+              int alen)
+{
     int len = RTA_LENGTH(alen);
     struct rtattr *rta;
 
-    if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen) {
+    if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
+    {
         fprintf(
             stderr,
             "addattr_l ERROR: message exceeded bound of %d\n",
-            maxlen
-        );
+            maxlen);
 
         return -1;
     }
