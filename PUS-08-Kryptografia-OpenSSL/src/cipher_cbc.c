@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     int i, tmp;
 
     /* Wiadomosc do zaszfrowania: */
-    char plaintext[80] = "MESSAGE_MESSAGE_MESSAGE_MESSAGE_";
+    char plaintext[80] = "MESSAGE_MESSAGE_MESSAGE_MESSAGE_AB";
 
     /* Bufor na szyfrogram: */
     unsigned char ciphertext[80];
@@ -109,6 +109,11 @@ int main(int argc, char **argv) {
      * z kontekstem:
      */
     EVP_CIPHER_CTX_free(ctx);
+
+    /*
+     * Utworzenie kontekstu pod deszyfrowanie
+     */
+    ctx = EVP_CIPHER_CTX_new();
 
     ciphertext_len += tmp;
 
